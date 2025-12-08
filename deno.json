@@ -1,10 +1,9 @@
 {
   "tasks": {
-    "start": "deno run --allow-net --allow-read --allow-env main.ts"
-  },
-  "imports": {
+    "start": "deno run --allow-net --allow-read main.ts"
   },
   "compilerOptions": {
     "lib": ["deno.window"]
-  }
+  },
+  "importMap": "./import_map.json"
 }
