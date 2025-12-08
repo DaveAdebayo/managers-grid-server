@@ -1,43 +1,46 @@
-// TapTap Game Server - FIXED VERSION
+// TapTap Game Server - WORKING VERSION
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   
-  // Create response
+  // Create response object
   let response: Response;
   
-  // Handle OPTIONS preflight
+  // Handle OPTIONS (CORS preflight)
   if (req.method === "OPTIONS") {
-    response = new Response(null, { status: 204 });
-  }
-  
-  // Health check
-  else if (url.pathname === "/health") {
-    response = new Response(JSON.stringify({
-      status: "online",
-      service: "TapTap Game Server",
-      timestamp: new Date().toISOString(),
-      endpoints: [
-        "/api/login",
-        "/api/save", 
-        "/api/load",
-        "/api/purchase"
-      ]
-    }), {
-      headers: { "Content-Type": "application/json" }
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400"
+      }
     });
   }
   
-  // Login endpoint
-  else if (url.pathname === "/api/login" && req.method === "POST") {
-    try {
+  try {
+    // Health endpoint
+    if (url.pathname === "/health") {
+      response = new Response(JSON.stringify({
+        status: "online",
+        service: "TapTap Game Server",
+        timestamp: new Date().toISOString()
+      }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
+    
+    // Login endpoint
+    else if (url.pathname === "/api/login" && req.method === "POST") {
       const body = await req.json();
       const deviceId = body.device_id || "unknown";
-      const forceNew = body.force_new || false;
       
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
       const sessionId = `sess_${crypto.randomUUID().replace(/-/g, '')}`;
       
-      console.log(`New login: ${userId} from ${deviceId}`);
+      console.log(`Login: ${userId} from ${deviceId}`);
       
       response = new Response(JSON.stringify({
         success: true,
@@ -60,53 +63,39 @@ Deno.serve(async (req) => {
         },
         message: "Login successful"
       }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    } catch (error) {
-      response = new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
-  }
-  
-  // Save game endpoint
-  else if (url.pathname === "/api/save" && req.method === "POST") {
-    try {
+    
+    // Save game endpoint
+    else if (url.pathname === "/api/save" && req.method === "POST") {
       const body = await req.json();
       const sessionId = body.session_id;
       const gameData = body.game_data || {};
       
-      console.log(`Game save for session: ${sessionId?.substr(0, 15)}...`);
+      console.log(`Save: ${sessionId?.substr(0, 15)}...`);
       
       response = new Response(JSON.stringify({
         success: true,
         saved_at: new Date().toISOString(),
         message: "Game saved successfully"
       }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    } catch (error) {
-      response = new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
-  }
-  
-  // Load game endpoint
-  else if (url.pathname === "/api/load" && req.method === "POST") {
-    try {
+    
+    // Load game endpoint
+    else if (url.pathname === "/api/load" && req.method === "POST") {
       const body = await req.json();
       const sessionId = body.session_id;
       
-      console.log(`Game load for session: ${sessionId?.substr(0, 15)}...`);
+      console.log(`Load: ${sessionId?.substr(0, 15)}...`);
       
       response = new Response(JSON.stringify({
         success: true,
@@ -126,22 +115,15 @@ Deno.serve(async (req) => {
         },
         loaded_at: new Date().toISOString()
       }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    } catch (error) {
-      response = new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
-  }
-  
-  // Purchase recording endpoint
-  else if (url.pathname === "/api/purchase" && req.method === "POST") {
-    try {
+    
+    // Purchase endpoint
+    else if (url.pathname === "/api/purchase" && req.method === "POST") {
       const body = await req.json();
       const sessionId = body.session_id;
       const productId = body.product_id;
@@ -149,12 +131,7 @@ Deno.serve(async (req) => {
       const receipt = body.receipt || "";
       const platform = body.platform || "android";
       
-      console.log(`📦 PURCHASE RECORDED:`);
-      console.log(`  User session: ${sessionId?.substr(0, 15)}...`);
-      console.log(`  Product: ${productId}`);
-      console.log(`  Transaction: ${transactionId}`);
-      console.log(`  Platform: ${platform}`);
-      console.log(`  Time: ${new Date().toISOString()}`);
+      console.log(`Purchase: ${productId} for ${sessionId?.substr(0, 15)}...`);
       
       response = new Response(JSON.stringify({
         success: true,
@@ -162,46 +139,45 @@ Deno.serve(async (req) => {
         product_id: productId,
         transaction_id: transactionId,
         platform: platform,
-        message: "Purchase recorded successfully"
+        message: "Purchase recorded"
       }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    } catch (error) {
-      response = new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
-  }
-  
-  // 404 - Not found
-  else {
+    
+    // 404 - Not found
+    else {
+      response = new Response(JSON.stringify({
+        success: false,
+        error: "Endpoint not found",
+        path: url.pathname
+      }), {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
+    
+  } catch (error) {
+    // Error handling
     response = new Response(JSON.stringify({
       success: false,
-      error: "Endpoint not found",
-      path: url.pathname
+      error: error.message
     }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" }
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
     });
   }
   
-  // Add CORS headers
-  const newResponse = new Response(response.body, response);
-  
-  newResponse.headers.set("Access-Control-Allow-Origin", "*");
-  newResponse.headers.set("Access-Control-Allow-Methods", "*");
-  newResponse.headers.set("Access-Control-Allow-Headers", "*");
-  newResponse.headers.set("Access-Control-Max-Age", "86400");
-  
-  // Remove CSP header
-  newResponse.headers.delete("Content-Security-Policy");
-  
-  return newResponse;
+  return response;
 });
 
-console.log("🚀 TapTap Game Server running!");
-console.log("✅ Ready for Android IAPs");
+console.log("🚀 TapTap Game Server started!");
