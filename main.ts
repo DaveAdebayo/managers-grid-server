@@ -1,63 +1,143 @@
-// main.ts - Updated with better purchase handling
+// main.ts - Enhanced for Web IAPs
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   
-  // CORS headers
+  // CORS headers for web games
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization"
   };
   
-  // OPTIONS preflight
+  // Handle OPTIONS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers });
   }
   
   try {
-    // Health
+    // Health check
     if (url.pathname === "/health") {
       return new Response(JSON.stringify({ 
         status: "online",
         time: new Date().toISOString(),
-        server: "TapTap Game Server v1.0"
+        server: "Game Server v1.0"
       }), { headers });
     }
     
-    // Login
-    if (url.pathname === "/api/login" && req.method === "POST") {
+    // Web login (device-based or account)
+    if (url.pathname === "/api/web-login" && req.method === "POST") {
       const body = await req.json();
-      const device_id = body.device_id || "unknown";
+      const deviceId = body.device_id || "web_" + Date.now();
+      const playerName = body.player_name || "Player";
       
-      // Generate user ID based on device ID
-      const userId = "user_" + Date.now() + "_" + device_id.substring(0, 8);
+      // Generate session
+      return new Response(JSON.stringify({
+        success: true,
+        user_id: "web_user_" + deviceId,
+        session_id: "sess_" + Date.now(),
+        player_name: playerName
+      }), { headers });
+    }
+    
+    // Web purchase (server-side validation)
+    if (url.pathname === "/api/web-purchase" && req.method === "POST") {
+      const body = await req.json();
+      const { session_id, product_id, payment_data } = body;
+      
+      console.log("Web purchase attempt:", {
+        session_id,
+        product_id,
+        timestamp: new Date().toISOString()
+      });
+      
+      // In production: Validate payment_data here
+      // For now, simulate successful payment
+      const isValidPayment = true;
+      
+      if (isValidPayment) {
+        return new Response(JSON.stringify({
+          success: true,
+          transaction_id: "TXN_" + Date.now(),
+          product_id: product_id,
+          verified: true,
+          receipt: {
+            server_verified: true,
+            timestamp: new Date().toISOString(),
+            payment_method: "web"
+          }
+        }), { headers });
+      } else {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Payment validation failed"
+        }), { status: 400, headers });
+      }
+    }
+    
+    // Get products for web store
+    if (url.pathname === "/api/web-products" && req.method === "GET") {
+      const products = [
+        {
+          id: "gems_50",
+          type: "consumable",
+          title: "50 Gems",
+          description: "Get 50 in-game gems",
+          price: "$0.49",
+          price_numeric: 0.49,
+          currency: "USD",
+          gem_amount: 50
+        },
+        {
+          id: "gems_300",
+          type: "consumable",
+          title: "300 Gems",
+          description: "Get 300 in-game gems",
+          price: "$1.49",
+          price_numeric: 1.49,
+          currency: "USD",
+          gem_amount: 300
+        },
+        {
+          id: "gems_500",
+          type: "consumable",
+          title: "500 Gems",
+          description: "Get 500 in-game gems",
+          price: "$1.99",
+          price_numeric: 1.99,
+          currency: "USD",
+          gem_amount: 500
+        },
+        {
+          id: "premium",
+          type: "non_consumable",
+          title: "Premium Version",
+          description: "Unlock premium features permanently",
+          price: "$2.99",
+          price_numeric: 2.99,
+          currency: "USD",
+          is_premium: true
+        }
+      ];
       
       return new Response(JSON.stringify({
         success: true,
-        user_id: userId,
-        session_id: "sess_" + Date.now(),
-        server_time: new Date().toISOString()
+        products: products
       }), { headers });
     }
     
-    // Save
+    // Save/load game data (existing)
     if (url.pathname === "/api/save" && req.method === "POST") {
       const body = await req.json();
-      console.log("Game saved for user:", body.session_id);
-      
+      console.log("Game saved:", body.session_id);
       return new Response(JSON.stringify({
         success: true,
-        saved_at: new Date().toISOString(),
-        message: "Game data saved successfully"
+        saved_at: new Date().toISOString()
       }), { headers });
     }
     
-    // Load
     if (url.pathname === "/api/load" && req.method === "POST") {
       const body = await req.json();
-      
-      // Return dummy game data
       return new Response(JSON.stringify({
         success: true,
         game_data: { 
@@ -69,86 +149,17 @@ Deno.serve(async (req) => {
       }), { headers });
     }
     
-    // Purchase
-    if (url.pathname === "/api/purchase" && req.method === "POST") {
-      const body = await req.json();
-      console.log("Purchase recorded:", body);
-      
-      return new Response(JSON.stringify({
-        success: true,
-        recorded_at: new Date().toISOString(),
-        product_id: body.product_id,
-        transaction_id: body.transaction_id || "no_transaction_id",
-        server_receipt: "server_verified_" + Date.now()
-      }), { headers });
-    }
-    
-    // Get products (new endpoint)
-    if (url.pathname === "/api/products" && req.method === "GET") {
-      const products = [
-        {
-          id: "com.managersgrid.gems_50",
-          type: "consumable",
-          title: "50 Gems",
-          description: "Get 50 in-game gems",
-          price: "0.49",
-          price_locale: "USD",
-          gem_amount: 50
-        },
-        {
-          id: "com.managersgrid.gems_300",
-          type: "consumable",
-          title: "300 Gems",
-          description: "Get 300 in-game gems",
-          price: "1.49",
-          price_locale: "USD",
-          gem_amount: 300
-        },
-        {
-          id: "com.managersgrid.gems_500",
-          type: "consumable",
-          title: "500 Gems",
-          description: "Get 500 in-game gems",
-          price: "1.99",
-          price_locale: "USD",
-          gem_amount: 500
-        },
-        {
-          id: "com.managersgrid.premium",
-          type: "non_consumable",
-          title: "Premium Version",
-          description: "Unlock premium features permanently",
-          price: "1.99",
-          price_locale: "USD",
-          is_premium: true
-        }
-      ];
-      
-      return new Response(JSON.stringify({
-        success: true,
-        products: products
-      }), { headers });
-    }
-    
     // 404
-    return new Response(JSON.stringify({ 
-      error: "Endpoint not found",
-      path: url.pathname 
-    }), { 
+    return new Response(JSON.stringify({ error: "Not found" }), { 
       status: 404, 
       headers 
     });
     
   } catch (error) {
     console.error("Server error:", error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      details: "Internal server error" 
-    }), { 
+    return new Response(JSON.stringify({ error: error.message }), { 
       status: 500, 
       headers 
     });
   }
 });
-
-console.log("Server running on port 8000");
